@@ -46,6 +46,7 @@ interface AppState {
 
   members: Member[];
   addMember: (item: Omit<Member, 'id'>) => void;
+  updateMember: (id: string, item: Omit<Member, 'id'>) => void;
   deleteMember: (id: string) => void;
   setMembers: (items: Member[]) => void;
 
@@ -64,14 +65,40 @@ interface AppState {
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
+const memberNameOverrides: Record<string, string> = {
+  'Какоткина Светлана': 'Светлана Какоткина',
+  'Фидирко Анна': 'Анна Фидирко',
+  'Семенова Елена': 'Елена Семенова',
+  'Батищева Кристина': 'Кристина Батищева',
+  'Куралбаев Дамир': 'Дамир Куралбаев',
+  'Хакимжанова Айгуль': 'Айгуль Хакимжанова',
+  'Трофимович Виктория': 'Виктория Трофимович',
+};
+
+const normalizeMemberName = (name: string) => memberNameOverrides[name] ?? name;
+
+const normalizeMember = (member: Member): Member => ({
+  ...member,
+  name: normalizeMemberName(member.name),
+});
+
+const normalizeCatalogItem = (item: CatalogItem): CatalogItem => ({
+  ...item,
+  author: normalizeMemberName(item.author),
+});
+
 const mergeMembers = (current: Member[], imported: Member[]): Member[] => {
-  const existingNames = new Set(current.map((member) => member.name));
-  return [...current, ...imported.filter((member) => !existingNames.has(member.name))];
+  const normalizedCurrent = current.map(normalizeMember);
+  const normalizedImported = imported.map(normalizeMember);
+  const existingNames = new Set(normalizedCurrent.map((member) => member.name));
+  return [...normalizedCurrent, ...normalizedImported.filter((member) => !existingNames.has(member.name))];
 };
 
 const mergeCatalog = (current: CatalogItem[], imported: CatalogItem[]): CatalogItem[] => {
-  const existingKeys = new Set(current.map((item) => `${item.author}::${item.title}`));
-  return [...current, ...imported.filter((item) => !existingKeys.has(`${item.author}::${item.title}`))];
+  const normalizedCurrent = current.map(normalizeCatalogItem);
+  const normalizedImported = imported.map(normalizeCatalogItem);
+  const existingKeys = new Set(normalizedCurrent.map((item) => `${item.author}::${item.title}`));
+  return [...normalizedCurrent, ...normalizedImported.filter((item) => !existingKeys.has(`${item.author}::${item.title}`))];
 };
 
 const mergePortfolioState = (state: Pick<AppState, 'members' | 'catalog'>) => ({
@@ -100,6 +127,30 @@ const deleteFromSupabase = async (table: string, id: string) => {
     await supabase.from(table).delete().eq('id', id);
   } catch (error) {
     console.error('Supabase delete error', error);
+  }
+};
+
+const updateInSupabase = async (table: string, id: string, data: Record<string, unknown>) => {
+  if (!supabase) {
+    return;
+  }
+
+  try {
+    await supabase.from(table).update(data).eq('id', id);
+  } catch (error) {
+    console.error('Supabase update error', error);
+  }
+};
+
+const updateCatalogAuthorInSupabase = async (previousName: string, nextName: string) => {
+  if (!supabase || previousName === nextName) {
+    return;
+  }
+
+  try {
+    await supabase.from('catalog').update({ author: nextName }).eq('author', previousName);
+  } catch (error) {
+    console.error('Supabase catalog author update error', error);
   }
 };
 
@@ -132,12 +183,32 @@ export const useStore = create<AppState>()(
         }),
       setNews: (items) => set({ news: items }),
 
-      members: importedMembers,
+      members: importedMembers.map(normalizeMember),
       addMember: (item) =>
         set((state) => {
-          const newItem = { ...item, id: generateId() };
+          const newItem = normalizeMember({ ...item, id: generateId() });
           pushToSupabase('members', newItem);
           return { members: [...state.members, newItem] };
+        }),
+      updateMember: (id, item) =>
+        set((state) => {
+          const currentMember = state.members.find((member) => member.id === id);
+          if (!currentMember) {
+            return state;
+          }
+
+          const updatedMember = normalizeMember({ ...item, id });
+          updateInSupabase('members', id, updatedMember);
+          updateCatalogAuthorInSupabase(currentMember.name, updatedMember.name);
+
+          return {
+            members: state.members.map((member) => (member.id === id ? updatedMember : member)),
+            catalog: state.catalog.map((catalogItem) =>
+              catalogItem.author === currentMember.name
+                ? { ...catalogItem, author: updatedMember.name }
+                : catalogItem
+            ),
+          };
         }),
       deleteMember: (id) =>
         set((state) => {
@@ -146,7 +217,7 @@ export const useStore = create<AppState>()(
         }),
       setMembers: (items) => set({ members: items }),
 
-      catalog: importedCatalog,
+      catalog: importedCatalog.map(normalizeCatalogItem),
       addCatalogItem: (item) =>
         set((state) => {
           const newItem = { ...item, id: generateId() };

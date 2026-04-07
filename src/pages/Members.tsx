@@ -1,28 +1,29 @@
 import React, { useState } from 'react';
-import { useData } from '../store';
 import { User, X, Image as ImageIcon } from 'lucide-react';
+import { useData } from '../store';
 
 export default function Members() {
   const { members, catalog } = useData();
   const [selected, setSelected] = useState<typeof members[0] | null>(null);
   const [lightbox, setLightbox] = useState<typeof catalog[0] | null>(null);
 
-  const memberWorks = selected
-    ? catalog.filter(item => item.author === selected.name)
-    : [];
+  const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  const memberWorks = selected ? catalog.filter((item) => item.author === selected.name) : [];
 
   return (
     <div className="space-y-8">
       <div className="border-b border-stone-200 pb-6 mb-8 text-center max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-stone-800 tracking-tight">Участники сообщества</h1>
-        <p className="text-stone-500 mt-2 text-base">Художники-пастелисты Казахстана, объединяющие традиции и современный взгляд на живопись.</p>
+        <p className="text-stone-500 mt-2 text-base">
+          Художники-пастелисты Казахстана, объединяющие традиции и современный взгляд на живопись.
+        </p>
       </div>
 
-      {members.length === 0 ? (
+      {sortedMembers.length === 0 ? (
         <div className="text-center py-12 text-stone-400">Участников пока нет.</div>
       ) : (
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {members.map((member) => (
+          {sortedMembers.map((member) => (
             <div
               key={member.id}
               className="bg-white rounded-2xl border border-stone-100 overflow-hidden group hover:shadow-lg transition-all duration-300 cursor-pointer"
@@ -46,7 +47,7 @@ export default function Members() {
                 <h3 className="text-base font-bold text-stone-900 mb-1">{member.name}</h3>
                 <p className="text-sm text-stone-500 line-clamp-3">{member.bio}</p>
                 <span className="inline-block mt-3 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
-                  {catalog.filter(c => c.author === member.name).length} работ
+                  {catalog.filter((item) => item.author === member.name).length} работ
                 </span>
               </div>
             </div>
@@ -54,15 +55,17 @@ export default function Members() {
         </div>
       )}
 
-      {/* Member Portfolio Modal */}
       {selected && (
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto"
-          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setSelected(null);
+            }
+          }}
         >
           <div className="bg-white rounded-3xl max-w-4xl w-full my-8 overflow-hidden shadow-2xl">
-            {/* Header */}
-            <div className="relative bg-stone-50 p-8 flex gap-6 items-start border-b border-stone-100">
+            <div className="relative bg-stone-50 p-8 flex flex-col sm:flex-row gap-6 items-start border-b border-stone-100">
               <button
                 onClick={() => setSelected(null)}
                 className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 p-1 transition-colors"
@@ -84,7 +87,6 @@ export default function Members() {
               </div>
             </div>
 
-            {/* Portfolio */}
             <div className="p-8">
               <h3 className="text-lg font-bold text-stone-800 mb-5">
                 Работы художника
@@ -95,7 +97,9 @@ export default function Members() {
                 <div className="text-center py-12 text-stone-400 flex flex-col items-center gap-3">
                   <ImageIcon className="w-10 h-10 text-stone-200" />
                   <p>Работы этого художника пока не добавлены в каталог.</p>
-                  <p className="text-sm text-stone-300">Добавьте работы в каталог, указав имя автора: <b className="text-stone-400">{selected.name}</b></p>
+                  <p className="text-sm text-stone-300">
+                    Добавьте работы в каталог, указав имя автора: <b className="text-stone-400">{selected.name}</b>
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -125,24 +129,16 @@ export default function Members() {
         </div>
       )}
 
-      {/* Lightbox */}
       {lightbox && (
         <div
           className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
-          <button
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 text-white/60 hover:text-white p-2"
-          >
+          <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 text-white/60 hover:text-white p-2">
             <X className="w-8 h-8" />
           </button>
-          <div className="max-w-5xl w-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
-            <img
-              src={lightbox.image}
-              alt={lightbox.title}
-              className="max-h-[80vh] object-contain rounded-lg shadow-2xl"
-            />
+          <div className="max-w-5xl w-full flex flex-col items-center" onClick={(event) => event.stopPropagation()}>
+            <img src={lightbox.image} alt={lightbox.title} className="max-h-[80vh] object-contain rounded-lg shadow-2xl" />
             <div className="text-center mt-4">
               <h3 className="text-2xl font-bold text-white">{lightbox.title}</h3>
               <p className="text-stone-400 mt-1">{lightbox.author}</p>
