@@ -1,43 +1,38 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useData } from '../store';
 import { ArrowRight, Brush } from 'lucide-react';
+import { useData } from '../store';
 
 export default function Home() {
   const { news, press } = useData();
   const recentNews = news.slice(0, 3);
   const recentPress = press.slice(0, 2);
-  const heroImage = '/imported/works/001-svetlana-kushkova.jpeg';
 
   return (
     <div className="space-y-12">
-      {/* Hero */}
-      <section className="relative rounded-2xl overflow-hidden bg-stone-800 text-white min-h-[420px] flex items-center">
-        <div className="absolute inset-0">
-          <img
-            src={heroImage}
-            alt="Пастельная работа из коллекции сообщества"
-            className="w-full h-full object-cover opacity-40"
-          />
-        </div>
-        <div className="relative z-10 px-8 py-12 md:px-16 max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
+      <section className="rounded-[2rem] bg-white border border-stone-200 px-8 py-12 md:px-14 md:py-16">
+        <div className="max-w-4xl">
+          <span className="inline-flex items-center rounded-full bg-stone-100 px-4 py-1.5 text-sm font-medium text-stone-600">
+            Пастельное сообщество Казахстана
+          </span>
+          <h1 className="text-4xl md:text-6xl font-bold mt-6 mb-5 leading-tight text-amber-900">
             Сообщество пастелистов Казахстана
           </h1>
-          <p className="text-lg text-stone-300 mb-8 max-w-2xl leading-relaxed">
-            Мы объединяем художников Алматы и всего Казахстана, работающих в удивительной технике пастели. Наша цель — развитие, поддержка и популяризация пастельной живописи.
+          <p className="text-lg md:text-xl text-stone-600 max-w-3xl leading-relaxed mb-8">
+            Мы объединяем художников Алматы и всего Казахстана, работающих в удивительной технике пастели.
+            Наша цель — развитие, поддержка и популяризация пастельной живописи.
           </p>
           <div className="flex flex-wrap gap-4">
             <Link
               to="/catalog"
-              className="bg-white text-stone-900 px-6 py-3 rounded-full font-medium hover:bg-stone-100 transition-colors inline-flex items-center gap-2"
+              className="bg-stone-900 text-white px-6 py-3 rounded-full font-medium hover:bg-stone-800 transition-colors inline-flex items-center gap-2"
             >
               <Brush className="w-5 h-5" />
               Галерея работ
             </Link>
             <Link
               to="/members"
-              className="bg-stone-700 border border-stone-600 text-white px-6 py-3 rounded-full font-medium hover:bg-stone-600 transition-colors"
+              className="bg-white border border-stone-300 text-stone-900 px-6 py-3 rounded-full font-medium hover:bg-stone-50 transition-colors"
             >
               Наши художники
             </Link>
@@ -46,7 +41,6 @@ export default function Home() {
       </section>
 
       <div className="grid md:grid-cols-2 gap-12">
-        {/* Recent News */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-stone-800">Последние новости</h2>
@@ -58,12 +52,12 @@ export default function Home() {
             {recentNews.length === 0 ? (
               <p className="text-stone-400">Пока нет новостей.</p>
             ) : (
-              recentNews.map(item => (
+              recentNews.map((item) => (
                 <div key={item.id} className="flex gap-4 group">
                   {item.image && (
                     <img
                       src={item.image}
-                      alt={item.title}
+                      alt={item.title || 'Новость сообщества'}
                       className="w-24 h-24 object-cover rounded-xl flex-shrink-0"
                     />
                   )}
@@ -71,10 +65,12 @@ export default function Home() {
                     <span className="text-xs font-medium text-stone-400 mb-1 block">
                       {new Date(item.date).toLocaleDateString('ru-RU')}
                     </span>
-                    <h3 className="font-semibold text-base text-stone-900 group-hover:text-amber-700 transition-colors mb-1">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm text-stone-600 leading-relaxed">{item.content}</p>
+                    {item.title && (
+                      <h3 className="font-semibold text-base text-stone-900 group-hover:text-amber-700 transition-colors mb-1">
+                        {item.title}
+                      </h3>
+                    )}
+                    {item.content && <p className="text-sm text-stone-600 leading-relaxed">{item.content}</p>}
                   </div>
                 </div>
               ))
@@ -82,7 +78,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Press */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-stone-800">О нас пишут</h2>
@@ -94,7 +89,7 @@ export default function Home() {
             {recentPress.length === 0 ? (
               <p className="text-stone-400">Пока нет публикаций.</p>
             ) : (
-              recentPress.map(item => (
+              recentPress.map((item) => (
                 <a
                   key={item.id}
                   href={item.url}
