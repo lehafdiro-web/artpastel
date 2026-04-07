@@ -108,50 +108,58 @@ const mergePortfolioState = (state: Pick<AppState, 'members' | 'catalog'>) => ({
 
 const pushToSupabase = async (table: string, data: unknown) => {
   if (!supabase) {
-    return;
+    return true;
   }
 
-  try {
-    await supabase.from(table).insert([data]);
-  } catch (error) {
+  const { error } = await supabase.from(table).insert([data]);
+  if (error) {
     console.error('Supabase insert error', error);
+    return false;
   }
+
+  return true;
 };
 
 const deleteFromSupabase = async (table: string, id: string) => {
   if (!supabase) {
-    return;
+    return true;
   }
 
-  try {
-    await supabase.from(table).delete().eq('id', id);
-  } catch (error) {
+  const { error } = await supabase.from(table).delete().eq('id', id);
+  if (error) {
     console.error('Supabase delete error', error);
+    return false;
   }
+
+  return true;
 };
 
 const updateInSupabase = async (table: string, id: string, data: Record<string, unknown>) => {
   if (!supabase) {
-    return;
+    return true;
   }
 
-  try {
-    await supabase.from(table).update(data).eq('id', id);
-  } catch (error) {
+  const { error } = await supabase.from(table).update(data).eq('id', id);
+  if (error) {
     console.error('Supabase update error', error);
+    return false;
   }
+
+  return true;
 };
 
 const updateCatalogAuthorInSupabase = async (previousName: string, nextName: string) => {
   if (!supabase || previousName === nextName) {
-    return;
+    return true;
   }
 
-  try {
-    await supabase.from('catalog').update({ author: nextName }).eq('author', previousName);
-  } catch (error) {
+  const { error } = await supabase.from('catalog').update({ author: nextName }).eq('author', previousName);
+  if (error) {
     console.error('Supabase catalog author update error', error);
+    return false;
   }
+
+  return true;
 };
 
 export const useStore = create<AppState>()(
@@ -161,15 +169,7 @@ export const useStore = create<AppState>()(
       login: () => set({ isAdmin: true }),
       logout: () => set({ isAdmin: false }),
 
-      news: [
-        {
-          id: '1',
-          title: 'Открытие выставки "Степная пастель"',
-          content: 'Приглашаем всех на выставку работ художников-пастелистов в Алматы.',
-          image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&q=80',
-          date: new Date().toISOString(),
-        },
-      ],
+      news: [],
       addNews: (item) =>
         set((state) => {
           const newItem = { ...item, id: generateId(), date: new Date().toISOString() };
@@ -220,7 +220,7 @@ export const useStore = create<AppState>()(
       catalog: importedCatalog.map(normalizeCatalogItem),
       addCatalogItem: (item) =>
         set((state) => {
-          const newItem = { ...item, id: generateId() };
+          const newItem = normalizeCatalogItem({ ...item, id: generateId() });
           pushToSupabase('catalog', newItem);
           return { catalog: [...state.catalog, newItem] };
         }),
@@ -231,15 +231,7 @@ export const useStore = create<AppState>()(
         }),
       setCatalog: (items) => set({ catalog: items }),
 
-      press: [
-        {
-          id: '1',
-          title: 'Возрождение пастельной живописи',
-          source: 'ArtKZ Magazine',
-          url: 'https://example.com',
-          snippet: 'Сообщество пастелистов из Алматы привлекает всё больше внимания...',
-        },
-      ],
+      press: [],
       addPressItem: (item) =>
         set((state) => {
           const newItem = { ...item, id: generateId() };
@@ -268,20 +260,18 @@ export const useStore = create<AppState>()(
           ]);
 
           set((state) => ({
-            news: newsData.data && newsData.data.length > 0 ? newsData.data : state.news,
-            members: mergeMembers(
-              membersData.data && membersData.data.length > 0 ? membersData.data : state.members,
-              importedMembers
-            ),
-            catalog: mergeCatalog(
-              catalogData.data && catalogData.data.length > 0 ? catalogData.data : state.catalog,
-              importedCatalog
-            ),
-            press: pressData.data && pressData.data.length > 0 ? pressData.data : state.press,
+            news: newsData.data ?? [],
+            members: mergeMembers(membersData.data ?? state.members, importedMembers),
+            catalog: mergeCatalog(catalogData.data ?? state.catalog, importedCatalog),
+            press: pressData.data ?? [],
           }));
         } catch (error) {
           console.error('Error fetching from Supabase', error);
-          set((state) => mergePortfolioState(state));
+          set((state) => ({
+            ...mergePortfolioState(state),
+            news: [],
+            press: [],
+          }));
         }
       },
     }),
