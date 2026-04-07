@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
+import { X } from 'lucide-react';
 import { useData } from '../store';
-import { X, ChevronDown } from 'lucide-react';
 
 export default function Catalog() {
-  const { catalog, members } = useData();
+  const { catalog } = useData();
   const [selectedImage, setSelectedImage] = useState<typeof catalog[0] | null>(null);
   const [filterAuthor, setFilterAuthor] = useState<string>('all');
 
-  const authors = Array.from(new Set(catalog.map(item => item.author))).sort();
-  const filtered = filterAuthor === 'all' ? catalog : catalog.filter(item => item.author === filterAuthor);
+  const authors = Array.from(new Set(catalog.map((item) => item.author))).sort((a, b) => a.localeCompare(b, 'ru'));
+  const filtered = filterAuthor === 'all' ? catalog : catalog.filter((item) => item.author === filterAuthor);
 
   return (
     <div className="space-y-8">
       <div className="border-b border-stone-200 pb-6 mb-8 text-center max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-stone-800 tracking-tight">Каталог работ</h1>
-        <p className="text-stone-500 mt-2">Галерея картин наших участников, выполненных в технике сухой и масляной пастели.</p>
+        <p className="text-stone-500 mt-2">Галерея картин наших участников, выполненных в технике сухой пастели.</p>
       </div>
 
-      {/* Author filter */}
       {authors.length > 1 && (
         <div className="flex flex-wrap gap-2 mb-2">
           <button
@@ -30,7 +29,7 @@ export default function Catalog() {
           >
             Все работы
           </button>
-          {authors.map(author => (
+          {authors.map((author) => (
             <button
               key={author}
               onClick={() => setFilterAuthor(author)}
@@ -57,7 +56,11 @@ export default function Catalog() {
               onClick={() => setSelectedImage(item)}
             >
               <div className="aspect-[4/3] bg-stone-100">
-                <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
                 <h3 className="text-white font-bold text-lg">{item.title}</h3>
@@ -68,13 +71,15 @@ export default function Catalog() {
         </div>
       )}
 
-      {/* Lightbox */}
       {selectedImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSelectedImage(null)}>
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setSelectedImage(null)}
+        >
           <button onClick={() => setSelectedImage(null)} className="absolute top-4 right-4 text-white/70 hover:text-white p-2">
             <X className="w-8 h-8" />
           </button>
-          <div className="max-w-5xl w-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
+          <div className="max-w-5xl w-full flex flex-col items-center" onClick={(event) => event.stopPropagation()}>
             <img
               src={selectedImage.image}
               alt={selectedImage.title}
@@ -91,9 +96,7 @@ export default function Catalog() {
               >
                 {selectedImage.author}
               </button>
-              {selectedImage.description && (
-                <p className="text-stone-500 text-sm mt-1">{selectedImage.description}</p>
-              )}
+              {selectedImage.description && <p className="text-stone-500 text-sm mt-1">{selectedImage.description}</p>}
             </div>
           </div>
         </div>
