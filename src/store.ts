@@ -41,6 +41,7 @@ interface AppState {
 
   news: NewsItem[];
   addNews: (item: Omit<NewsItem, 'id' | 'date'>) => void;
+  updateNews: (id: string, item: Omit<NewsItem, 'id' | 'date'>) => void;
   deleteNews: (id: string) => void;
   setNews: (items: NewsItem[]) => void;
 
@@ -52,11 +53,13 @@ interface AppState {
 
   catalog: CatalogItem[];
   addCatalogItem: (item: Omit<CatalogItem, 'id'>) => void;
+  updateCatalogItem: (id: string, item: Omit<CatalogItem, 'id'>) => void;
   deleteCatalogItem: (id: string) => void;
   setCatalog: (items: CatalogItem[]) => void;
 
   press: PressItem[];
   addPressItem: (item: Omit<PressItem, 'id'>) => void;
+  updatePressItem: (id: string, item: Omit<PressItem, 'id'>) => void;
   deletePressItem: (id: string) => void;
   setPress: (items: PressItem[]) => void;
 
@@ -176,6 +179,17 @@ export const useStore = create<AppState>()(
           pushToSupabase('news', newItem);
           return { news: [newItem, ...state.news] };
         }),
+      updateNews: (id, item) =>
+        set((state) => {
+          const currentItem = state.news.find((newsItem) => newsItem.id === id);
+          if (!currentItem) {
+            return state;
+          }
+
+          const updatedItem = { ...currentItem, ...item, id };
+          updateInSupabase('news', id, updatedItem);
+          return { news: state.news.map((newsItem) => (newsItem.id === id ? updatedItem : newsItem)) };
+        }),
       deleteNews: (id) =>
         set((state) => {
           deleteFromSupabase('news', id);
@@ -224,6 +238,17 @@ export const useStore = create<AppState>()(
           pushToSupabase('catalog', newItem);
           return { catalog: [...state.catalog, newItem] };
         }),
+      updateCatalogItem: (id, item) =>
+        set((state) => {
+          const currentItem = state.catalog.find((catalogItem) => catalogItem.id === id);
+          if (!currentItem) {
+            return state;
+          }
+
+          const updatedItem = normalizeCatalogItem({ ...currentItem, ...item, id });
+          updateInSupabase('catalog', id, updatedItem);
+          return { catalog: state.catalog.map((catalogItem) => (catalogItem.id === id ? updatedItem : catalogItem)) };
+        }),
       deleteCatalogItem: (id) =>
         set((state) => {
           deleteFromSupabase('catalog', id);
@@ -237,6 +262,17 @@ export const useStore = create<AppState>()(
           const newItem = { ...item, id: generateId() };
           pushToSupabase('press', newItem);
           return { press: [...state.press, newItem] };
+        }),
+      updatePressItem: (id, item) =>
+        set((state) => {
+          const currentItem = state.press.find((pressItem) => pressItem.id === id);
+          if (!currentItem) {
+            return state;
+          }
+
+          const updatedItem = { ...currentItem, ...item, id };
+          updateInSupabase('press', id, updatedItem);
+          return { press: state.press.map((pressItem) => (pressItem.id === id ? updatedItem : pressItem)) };
         }),
       deletePressItem: (id) =>
         set((state) => {

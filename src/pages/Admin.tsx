@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Edit3, LogOut, Plus, Save, Trash2, Upload, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Member, useStore } from '../store';
+import { CatalogItem, Member, NewsItem, PressItem, useStore } from '../store';
 
 const sanitizeFileName = (fileName: string): string => {
   const ext = fileName.split('.').pop() ?? '';
@@ -16,11 +16,13 @@ const sanitizeFileName = (fileName: string): string => {
     С: 'S', Т: 'T', У: 'U', Ф: 'F', Х: 'H', Ц: 'Ts', Ч: 'Ch', Ш: 'Sh', Щ: 'Sch',
     Ъ: '', Ы: 'Y', Ь: '', Э: 'E', Ю: 'Yu', Я: 'Ya',
   };
+
   const transliterated = nameWithoutExt.split('').map((char) => cyrillicToLatin[char] ?? char).join('');
   const sanitized = transliterated
     .replace(/[^a-zA-Z0-9\-_]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
+
   return `${sanitized}.${ext}`;
 };
 
@@ -40,11 +42,9 @@ const uploadImage = async (file: File): Promise<string | null> => {
   return data.publicUrl;
 };
 
-function combineFullName(firstName: string, lastName: string) {
-  return [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
-}
+const combineFullName = (firstName: string, lastName: string) => [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
 
-function splitFullName(name: string) {
+const splitFullName = (name: string) => {
   const parts = name.trim().split(/\s+/);
   if (parts.length <= 1) {
     return { firstName: parts[0] ?? '', lastName: '' };
@@ -54,11 +54,9 @@ function splitFullName(name: string) {
     firstName: parts[0],
     lastName: parts.slice(1).join(' '),
   };
-}
+};
 
-function sortByName<T extends { name: string }>(items: T[]) {
-  return [...items].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-}
+const sortByName = <T extends { name: string }>(items: T[]) => [...items].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
 function ImageUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
@@ -96,10 +94,10 @@ export default function Admin() {
   const [error, setError] = useState('');
 
   const {
-    news, addNews, deleteNews,
+    news, addNews, updateNews, deleteNews,
     members, addMember, updateMember, deleteMember,
-    catalog, addCatalogItem, deleteCatalogItem,
-    press, addPressItem, deletePressItem,
+    catalog, addCatalogItem, updateCatalogItem, deleteCatalogItem,
+    press, addPressItem, updatePressItem, deletePressItem,
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<'news' | 'members' | 'catalog' | 'press'>('news');
@@ -113,11 +111,6 @@ export default function Admin() {
     } else {
       setError('Неверный логин или пароль');
     }
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem('adminAuth');
   };
 
   if (!isAuthenticated) {
@@ -158,7 +151,13 @@ export default function Admin() {
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-8 border-b border-stone-200 pb-4">
         <h1 className="text-3xl font-bold text-stone-900">Управление сайтом</h1>
-        <button onClick={handleLogout} className="flex items-center gap-2 text-stone-500 hover:text-stone-800 transition-colors">
+        <button
+          onClick={() => {
+            setIsAuthenticated(false);
+            sessionStorage.removeItem('adminAuth');
+          }}
+          className="flex items-center gap-2 text-stone-500 hover:text-stone-800 transition-colors"
+        >
           <LogOut className="w-5 h-5" /> Выйти
         </button>
       </div>
@@ -185,72 +184,112 @@ export default function Admin() {
       </div>
 
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-stone-200">
-        {activeTab === 'news' && <AdminNews news={news} addNews={addNews} deleteNews={deleteNews} />}
+        {activeTab === 'news' && <AdminNews news={news} addNews={addNews} updateNews={updateNews} deleteNews={deleteNews} />}
         {activeTab === 'members' && (
-          <AdminMembers
-            members={members}
-            addMember={addMember}
-            updateMember={updateMember}
-            deleteMember={deleteMember}
-          />
+          <AdminMembers members={members} addMember={addMember} updateMember={updateMember} deleteMember={deleteMember} />
         )}
         {activeTab === 'catalog' && (
           <AdminCatalog
             catalog={catalog}
             members={members}
             addCatalogItem={addCatalogItem}
+            updateCatalogItem={updateCatalogItem}
             deleteCatalogItem={deleteCatalogItem}
           />
         )}
-        {activeTab === 'press' && <AdminPress press={press} addPressItem={addPressItem} deletePressItem={deletePressItem} />}
+        {activeTab === 'press' && (
+          <AdminPress press={press} addPressItem={addPressItem} updatePressItem={updatePressItem} deletePressItem={deletePressItem} />
+        )}
       </div>
     </div>
   );
 }
 
-function AdminNews({ news, addNews, deleteNews }: any) {
+function AdminNews({
+  news,
+  addNews,
+  updateNews,
+  deleteNews,
+}: {
+  news: NewsItem[];
+  addNews: (item: Omit<NewsItem, 'id' | 'date'>) => void;
+  updateNews: (id: string, item: Omit<NewsItem, 'id' | 'date'>) => void;
+  deleteNews: (id: string) => void;
+}) {
   const [form, setForm] = useState({ title: '', content: '', image: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const sortedNews = [...news].sort((a, b) => (a.date < b.date ? 1 : -1));
 
-  const add = (event: React.FormEvent) => {
-    event.preventDefault();
-    addNews(form);
+  const resetForm = () => {
     setForm({ title: '', content: '', image: '' });
+    setEditingId(null);
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (editingId) {
+      updateNews(editingId, form);
+    } else {
+      addNews(form);
+    }
+    resetForm();
   };
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4 text-stone-800">Добавить новость</h2>
-      <form onSubmit={add} className="space-y-4 mb-8 bg-stone-50 p-4 rounded-xl">
+      <h2 className="text-xl font-bold mb-4 text-stone-800">{editingId ? 'Редактировать новость' : 'Добавить новость'}</h2>
+      <form onSubmit={submit} className="space-y-4 mb-8 bg-stone-50 p-4 rounded-xl">
         <input
           type="text"
           placeholder="Заголовок"
-          required
           value={form.title}
           onChange={(event) => setForm({ ...form, title: event.target.value })}
           className="w-full p-2 border border-stone-300 rounded-lg"
         />
         <textarea
           placeholder="Текст новости"
-          required
           value={form.content}
           onChange={(event) => setForm({ ...form, content: event.target.value })}
           className="w-full p-2 border border-stone-300 rounded-lg min-h-[120px]"
         />
         <ImageUpload value={form.image} onChange={(url) => setForm({ ...form, image: url })} />
-        <button type="submit" className="bg-stone-900 text-white px-4 py-2 rounded-lg hover:bg-stone-800 flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Добавить
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" className="bg-stone-900 text-white px-4 py-2 rounded-lg hover:bg-stone-800 flex items-center gap-2">
+            {editingId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {editingId ? 'Сохранить' : 'Добавить'}
+          </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="bg-white text-stone-600 px-4 py-2 rounded-lg border border-stone-300 hover:bg-stone-50 flex items-center gap-2"
+            >
+              <X className="w-4 h-4" /> Отмена
+            </button>
+          )}
+        </div>
       </form>
       <div className="space-y-3">
-        {news.map((item: any) => (
-          <div key={item.id} className="flex justify-between items-center p-4 border border-stone-100 rounded-lg bg-white">
-            <div>
-              <h3 className="font-semibold text-stone-900">{item.title}</h3>
+        {sortedNews.map((item) => (
+          <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-stone-100 rounded-lg bg-white">
+            <div className="min-w-0">
+              <h3 className="font-semibold text-stone-900 break-words">{item.title || 'Новость без заголовка'}</h3>
               <p className="text-sm text-stone-400">{new Date(item.date).toLocaleDateString('ru-RU')}</p>
             </div>
-            <button onClick={() => deleteNews(item.id)} className="text-stone-400 hover:text-red-500 p-2 transition-colors">
-              <Trash2 className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <button
+                onClick={() => {
+                  setForm({ title: item.title, content: item.content, image: item.image ?? '' });
+                  setEditingId(item.id);
+                }}
+                className="text-stone-400 hover:text-stone-700 transition-colors p-2"
+              >
+                <Edit3 className="w-5 h-5" />
+              </button>
+              <button onClick={() => deleteNews(item.id)} className="text-stone-400 hover:text-red-500 p-2 transition-colors">
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -301,20 +340,13 @@ function AdminMembers({
 
   const startEditing = (member: Member) => {
     const { firstName, lastName } = splitFullName(member.name);
-    setForm({
-      firstName,
-      lastName,
-      bio: member.bio,
-      image: member.image ?? '',
-    });
+    setForm({ firstName, lastName, bio: member.bio, image: member.image ?? '' });
     setEditingId(member.id);
   };
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4 text-stone-800">
-        {editingId ? 'Редактировать участника' : 'Добавить участника'}
-      </h2>
+      <h2 className="text-xl font-bold mb-4 text-stone-800">{editingId ? 'Редактировать участника' : 'Добавить участника'}</h2>
       <form onSubmit={submit} className="space-y-4 mb-8 bg-stone-50 p-4 rounded-xl">
         <div className="grid sm:grid-cols-2 gap-4">
           <input
@@ -361,10 +393,7 @@ function AdminMembers({
 
       <div className="space-y-3">
         {sortedMembers.map((item) => (
-          <div
-            key={item.id}
-            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-stone-100 rounded-lg bg-white"
-          >
+          <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-stone-100 rounded-lg bg-white">
             <div className="flex items-center gap-3 min-w-0">
               {item.image && <img src={item.image} alt={item.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />}
               <div className="min-w-0">
@@ -373,18 +402,10 @@ function AdminMembers({
               </div>
             </div>
             <div className="flex items-center gap-2 self-end sm:self-auto">
-              <button
-                onClick={() => startEditing(item)}
-                className="text-stone-400 hover:text-stone-700 transition-colors p-2"
-                title="Редактировать"
-              >
+              <button onClick={() => startEditing(item)} className="text-stone-400 hover:text-stone-700 transition-colors p-2">
                 <Edit3 className="w-5 h-5" />
               </button>
-              <button
-                onClick={() => deleteMember(item.id)}
-                className="text-stone-400 hover:text-red-500 transition-colors p-2"
-                title="Удалить"
-              >
+              <button onClick={() => deleteMember(item.id)} className="text-stone-400 hover:text-red-500 transition-colors p-2">
                 <Trash2 className="w-5 h-5" />
               </button>
             </div>
@@ -395,25 +416,45 @@ function AdminMembers({
   );
 }
 
-function AdminCatalog({ catalog, members, addCatalogItem, deleteCatalogItem }: any) {
+function AdminCatalog({
+  catalog,
+  members,
+  addCatalogItem,
+  updateCatalogItem,
+  deleteCatalogItem,
+}: {
+  catalog: CatalogItem[];
+  members: Member[];
+  addCatalogItem: (item: Omit<CatalogItem, 'id'>) => void;
+  updateCatalogItem: (id: string, item: Omit<CatalogItem, 'id'>) => void;
+  deleteCatalogItem: (id: string) => void;
+}) {
   const [form, setForm] = useState({ title: '', author: '', description: '', image: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const sortedMembers = useMemo(() => sortByName(members), [members]);
-  const memberNames: string[] = sortedMembers.map((member: Member) => member.name);
+  const memberNames = sortedMembers.map((member) => member.name);
   const sortedCatalog = [...catalog].sort((a, b) => a.author.localeCompare(b.author, 'ru') || a.title.localeCompare(b.title, 'ru'));
 
-  const add = (event: React.FormEvent) => {
-    event.preventDefault();
-    addCatalogItem(form);
+  const resetForm = () => {
     setForm({ title: '', author: '', description: '', image: '' });
+    setEditingId(null);
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (editingId) {
+      updateCatalogItem(editingId, form);
+    } else {
+      addCatalogItem(form);
+    }
+    resetForm();
   };
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-1 text-stone-800">Добавить картину в каталог</h2>
-      <p className="text-sm text-stone-400 mb-4">
-        Имя автора должно совпадать с именем участника, тогда работа появится в его портфолио.
-      </p>
-      <form onSubmit={add} className="space-y-4 mb-8 bg-stone-50 p-4 rounded-xl">
+      <h2 className="text-xl font-bold mb-1 text-stone-800">{editingId ? 'Редактировать картину' : 'Добавить картину в каталог'}</h2>
+      <p className="text-sm text-stone-400 mb-4">Имя автора должно совпадать с именем участника, тогда работа появится в его портфолио.</p>
+      <form onSubmit={submit} className="space-y-4 mb-8 bg-stone-50 p-4 rounded-xl">
         <input
           type="text"
           placeholder="Название картины"
@@ -422,32 +463,19 @@ function AdminCatalog({ catalog, members, addCatalogItem, deleteCatalogItem }: a
           onChange={(event) => setForm({ ...form, title: event.target.value })}
           className="w-full p-2 border border-stone-300 rounded-lg"
         />
-
-        <div>
-          <select
-            value={form.author}
-            onChange={(event) => setForm({ ...form, author: event.target.value })}
-            className="w-full p-2 border border-stone-300 rounded-lg text-stone-700 bg-white"
-            required
-          >
-            <option value="">Выберите автора</option>
-            {memberNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-            <option value="__custom">Другой автор...</option>
-          </select>
-          {form.author === '__custom' && (
-            <input
-              type="text"
-              placeholder="Введите имя автора"
-              className="w-full p-2 border border-stone-300 rounded-lg mt-2"
-              onChange={(event) => setForm({ ...form, author: event.target.value })}
-            />
-          )}
-        </div>
-
+        <select
+          value={form.author}
+          onChange={(event) => setForm({ ...form, author: event.target.value })}
+          className="w-full p-2 border border-stone-300 rounded-lg text-stone-700 bg-white"
+          required
+        >
+          <option value="">Выберите автора</option>
+          {memberNames.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
         <input
           type="text"
           placeholder="Описание (размер, техника — необязательно)"
@@ -456,13 +484,25 @@ function AdminCatalog({ catalog, members, addCatalogItem, deleteCatalogItem }: a
           className="w-full p-2 border border-stone-300 rounded-lg"
         />
         <ImageUpload value={form.image} onChange={(url) => setForm({ ...form, image: url })} />
-        <button type="submit" className="bg-stone-900 text-white px-4 py-2 rounded-lg hover:bg-stone-800 flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Добавить
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" className="bg-stone-900 text-white px-4 py-2 rounded-lg hover:bg-stone-800 flex items-center gap-2">
+            {editingId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {editingId ? 'Сохранить' : 'Добавить'}
+          </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="bg-white text-stone-600 px-4 py-2 rounded-lg border border-stone-300 hover:bg-stone-50 flex items-center gap-2"
+            >
+              <X className="w-4 h-4" /> Отмена
+            </button>
+          )}
+        </div>
       </form>
       <div className="space-y-3">
-        {sortedCatalog.map((item: any) => (
-          <div key={item.id} className="flex justify-between items-center p-4 border border-stone-100 rounded-lg bg-white">
+        {sortedCatalog.map((item) => (
+          <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-stone-100 rounded-lg bg-white">
             <div className="flex items-center gap-3 min-w-0">
               {item.image && <img src={item.image} alt={item.title} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />}
               <div className="min-w-0">
@@ -470,9 +510,20 @@ function AdminCatalog({ catalog, members, addCatalogItem, deleteCatalogItem }: a
                 <p className="text-sm text-stone-400">{item.author}</p>
               </div>
             </div>
-            <button onClick={() => deleteCatalogItem(item.id)} className="text-stone-400 hover:text-red-500 transition-colors">
-              <Trash2 className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <button
+                onClick={() => {
+                  setForm({ title: item.title, author: item.author, description: item.description ?? '', image: item.image });
+                  setEditingId(item.id);
+                }}
+                className="text-stone-400 hover:text-stone-700 transition-colors p-2"
+              >
+                <Edit3 className="w-5 h-5" />
+              </button>
+              <button onClick={() => deleteCatalogItem(item.id)} className="text-stone-400 hover:text-red-500 transition-colors p-2">
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -480,19 +531,39 @@ function AdminCatalog({ catalog, members, addCatalogItem, deleteCatalogItem }: a
   );
 }
 
-function AdminPress({ press, addPressItem, deletePressItem }: any) {
+function AdminPress({
+  press,
+  addPressItem,
+  updatePressItem,
+  deletePressItem,
+}: {
+  press: PressItem[];
+  addPressItem: (item: Omit<PressItem, 'id'>) => void;
+  updatePressItem: (id: string, item: Omit<PressItem, 'id'>) => void;
+  deletePressItem: (id: string) => void;
+}) {
   const [form, setForm] = useState({ title: '', source: '', url: '', snippet: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const add = (event: React.FormEvent) => {
-    event.preventDefault();
-    addPressItem(form);
+  const resetForm = () => {
     setForm({ title: '', source: '', url: '', snippet: '' });
+    setEditingId(null);
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (editingId) {
+      updatePressItem(editingId, form);
+    } else {
+      addPressItem(form);
+    }
+    resetForm();
   };
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4 text-stone-800">Добавить ссылку на прессу</h2>
-      <form onSubmit={add} className="space-y-4 mb-8 bg-stone-50 p-4 rounded-xl">
+      <h2 className="text-xl font-bold mb-4 text-stone-800">{editingId ? 'Редактировать публикацию' : 'Добавить ссылку на прессу'}</h2>
+      <form onSubmit={submit} className="space-y-4 mb-8 bg-stone-50 p-4 rounded-xl">
         <input
           type="text"
           placeholder="Заголовок статьи"
@@ -524,19 +595,42 @@ function AdminPress({ press, addPressItem, deletePressItem }: any) {
           onChange={(event) => setForm({ ...form, snippet: event.target.value })}
           className="w-full p-2 border border-stone-300 rounded-lg"
         />
-        <button type="submit" className="bg-stone-900 text-white px-4 py-2 rounded-lg hover:bg-stone-800 flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Добавить
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" className="bg-stone-900 text-white px-4 py-2 rounded-lg hover:bg-stone-800 flex items-center gap-2">
+            {editingId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {editingId ? 'Сохранить' : 'Добавить'}
+          </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="bg-white text-stone-600 px-4 py-2 rounded-lg border border-stone-300 hover:bg-stone-50 flex items-center gap-2"
+            >
+              <X className="w-4 h-4" /> Отмена
+            </button>
+          )}
+        </div>
       </form>
       <div className="space-y-3">
-        {press.map((item: any) => (
-          <div key={item.id} className="flex justify-between items-center p-4 border border-stone-100 rounded-lg bg-white gap-4">
+        {press.map((item) => (
+          <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-stone-100 rounded-lg bg-white">
             <span className="text-stone-900 break-words">
               <b>{item.source}</b>: {item.title}
             </span>
-            <button onClick={() => deletePressItem(item.id)} className="text-stone-400 hover:text-red-500 transition-colors">
-              <Trash2 className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <button
+                onClick={() => {
+                  setForm({ title: item.title, source: item.source, url: item.url, snippet: item.snippet });
+                  setEditingId(item.id);
+                }}
+                className="text-stone-400 hover:text-stone-700 transition-colors p-2"
+              >
+                <Edit3 className="w-5 h-5" />
+              </button>
+              <button onClick={() => deletePressItem(item.id)} className="text-stone-400 hover:text-red-500 transition-colors p-2">
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
