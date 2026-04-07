@@ -22,8 +22,10 @@ export default function News() {
             if (imageOnly) {
               return (
                 <article key={item.id} className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
-                  <div className="aspect-[16/10] sm:aspect-[16/9] bg-stone-100">
-                    <img src={item.image} alt="Новость сообщества" className="w-full h-full object-cover" />
+                  <div className="bg-stone-100 p-3 sm:p-4">
+                    <div className="h-[280px] sm:h-[420px] md:h-[520px] flex items-center justify-center rounded-xl overflow-hidden bg-stone-50">
+                      <img src={item.image} alt="Новость сообщества" className="max-w-full max-h-full object-contain" />
+                    </div>
                   </div>
                   <div className="p-4">
                     <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
@@ -41,8 +43,14 @@ export default function News() {
             return (
               <article key={item.id} className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden md:flex">
                 {item.image && (
-                  <div className="md:w-2/5 h-56 md:h-auto flex-shrink-0">
-                    <img src={item.image} alt={item.title || 'Новость сообщества'} className="w-full h-full object-cover" />
+                  <div className="md:w-2/5 flex-shrink-0 bg-stone-100 p-3 md:p-4">
+                    <div className="h-[260px] md:h-full md:min-h-[340px] flex items-center justify-center rounded-xl overflow-hidden bg-stone-50">
+                      <img
+                        src={item.image}
+                        alt={item.title || 'Новость сообщества'}
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
                   </div>
                 )}
                 <div className={`p-6 flex flex-col justify-center ${item.image ? 'md:w-3/5' : 'w-full'}`}>
