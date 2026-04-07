@@ -45,7 +45,6 @@ export default function Members() {
               </div>
               <div className="p-5">
                 <h3 className="text-base font-bold text-stone-900 mb-1">{member.name}</h3>
-                <p className="text-sm text-stone-500 line-clamp-3">{member.bio}</p>
                 <span className="inline-block mt-3 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
                   {catalog.filter((item) => item.author === member.name).length} работ
                 </span>
