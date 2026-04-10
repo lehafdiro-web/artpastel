@@ -40,8 +40,8 @@ interface AppState {
   logout: () => void;
 
   news: NewsItem[];
-  addNews: (item: Omit<NewsItem, 'id' | 'date'>) => void;
-  updateNews: (id: string, item: Omit<NewsItem, 'id' | 'date'>) => void;
+  addNews: (item: Omit<NewsItem, 'id'>) => void;
+  updateNews: (id: string, item: Omit<NewsItem, 'id'>) => void;
   deleteNews: (id: string) => void;
   setNews: (items: NewsItem[]) => void;
 
@@ -175,7 +175,7 @@ export const useStore = create<AppState>()(
       news: [],
       addNews: (item) =>
         set((state) => {
-          const newItem = { ...item, id: generateId(), date: new Date().toISOString() };
+          const newItem = { ...item, id: generateId(), date: item.date || new Date().toISOString() };
           pushToSupabase('news', newItem);
           return { news: [newItem, ...state.news] };
         }),

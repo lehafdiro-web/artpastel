@@ -1,72 +1,28 @@
 import React from 'react';
+import EntryCard from '../components/EntryCard';
 import { useData } from '../store';
+import { getEntryKind, sortEntriesByDate } from '../utils/contentEntries';
 
 export default function News() {
   const { news } = useData();
-  const sortedNews = [...news].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const communityNews = sortEntriesByDate(news.filter((item) => getEntryKind(item) === 'news'));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="border-b border-stone-200 pb-4 mb-8">
-        <h1 className="text-3xl font-bold text-stone-900 tracking-tight">Новости сообщества</h1>
-        <p className="text-stone-500 mt-2">События, выставки, мастер-классы и жизнь пастелистов Казахстана.</p>
+    <div className="mx-auto max-w-4xl space-y-8">
+      <div className="mb-8 border-b border-stone-200 pb-4">
+        <h1 className="text-3xl font-bold tracking-tight text-stone-900">Новости сообщества</h1>
+        <p className="mt-2 text-stone-500">События, выставки, анонсы и фоторепортажи пастелистов Казахстана.</p>
       </div>
 
-      {sortedNews.length === 0 ? (
-        <div className="text-center py-12 text-stone-400">Новостей пока нет.</div>
+      {communityNews.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center text-stone-400">
+          Новостей пока нет.
+        </div>
       ) : (
         <div className="grid gap-8">
-          {sortedNews.map((item) => {
-            const imageOnly = Boolean(item.image) && !item.title.trim() && !item.content.trim();
-
-            if (imageOnly) {
-              return (
-                <article key={item.id} className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
-                  <div className="bg-stone-100 p-3 sm:p-4">
-                    <div className="h-[280px] sm:h-[420px] md:h-[520px] flex items-center justify-center rounded-xl overflow-hidden bg-stone-50">
-                      <img src={item.image} alt="Новость сообщества" className="max-w-full max-h-full object-contain" />
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
-                      {new Date(item.date).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </span>
-                  </div>
-                </article>
-              );
-            }
-
-            return (
-              <article key={item.id} className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden md:flex">
-                {item.image && (
-                  <div className="md:w-2/5 flex-shrink-0 bg-stone-100 p-3 md:p-4">
-                    <div className="h-[260px] md:h-full md:min-h-[340px] flex items-center justify-center rounded-xl overflow-hidden bg-stone-50">
-                      <img
-                        src={item.image}
-                        alt={item.title || 'Новость сообщества'}
-                        className="max-w-full max-h-full object-contain"
-                      />
-                    </div>
-                  </div>
-                )}
-                <div className={`p-6 flex flex-col justify-center ${item.image ? 'md:w-3/5' : 'w-full'}`}>
-                  <span className="text-xs font-semibold text-amber-700 mb-2 block uppercase tracking-wider">
-                    {new Date(item.date).toLocaleDateString('ru-RU', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </span>
-                  {item.title && <h2 className="text-xl font-bold text-stone-900 mb-3 leading-snug">{item.title}</h2>}
-                  {item.content && <p className="text-stone-600 leading-relaxed whitespace-pre-wrap">{item.content}</p>}
-                </div>
-              </article>
-            );
-          })}
+          {communityNews.map((item) => (
+            <EntryCard key={item.id} item={item} to={`/news/${item.id}`} />
+          ))}
         </div>
       )}
     </div>
