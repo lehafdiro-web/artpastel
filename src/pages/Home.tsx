@@ -14,10 +14,7 @@ export default function Home() {
     <div className="space-y-12">
       <section className="rounded-[2rem] border border-stone-200 bg-white px-8 py-12 md:px-14 md:py-16">
         <div className="max-w-4xl">
-          <span className="inline-flex items-center rounded-full bg-stone-100 px-4 py-1.5 text-sm font-medium text-stone-600">
-            Пастельное сообщество Казахстана
-          </span>
-          <h1 className="mt-6 mb-5 text-4xl font-bold leading-tight text-amber-900 md:text-6xl">Сообщество пастелистов Казахстана</h1>
+          <h1 className="mb-5 text-4xl font-bold leading-tight text-amber-900 md:text-6xl">Сообщество пастелистов Казахстана</h1>
           <p className="mb-8 max-w-3xl text-lg leading-relaxed text-stone-600 md:text-xl">
             Мы объединяем художников Алматы и всего Казахстана, работающих в удивительной технике пастели. Наша цель —
             развитие, поддержка и популяризация пастельной живописи.
