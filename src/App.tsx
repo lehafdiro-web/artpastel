@@ -11,6 +11,16 @@ import News from './pages/News';
 import Pleinairs from './pages/Pleinairs';
 import Press from './pages/Press';
 
+function ScrollToTop() {
+  const location = useLocation();
+
+  React.useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname, location.search]);
+
+  return null;
+}
+
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
@@ -42,6 +52,8 @@ function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-stone-50 font-sans text-stone-900">
+      <ScrollToTop />
+
       <header className="sticky top-0 z-50 bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-amber-900" onClick={closeMenu}>
