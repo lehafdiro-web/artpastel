@@ -82,7 +82,7 @@ export default function Members() {
               </div>
               <div className="flex-1 pt-1">
                 <h2 className="text-2xl font-bold text-stone-900 mb-2">{selected.name}</h2>
-                <p className="text-stone-600 leading-relaxed">{selected.bio}</p>
+                <p className="whitespace-pre-wrap text-stone-600 leading-relaxed">{selected.bio}</p>
               </div>
             </div>
 

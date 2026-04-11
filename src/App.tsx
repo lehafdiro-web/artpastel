@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
-import { BookOpen, CalendarRange, Image as ImageIcon, Lock, Menu, Newspaper, Palette, Users, X } from 'lucide-react';
+import { BookOpen, CalendarRange, Image as ImageIcon, Lock, Mail, Menu, Newspaper, Palette, Users, X } from 'lucide-react';
 
 import Admin from './pages/Admin';
 import Catalog from './pages/Catalog';
+import Contacts from './pages/Contacts';
 import EntryDetail from './pages/EntryDetail';
 import Home from './pages/Home';
 import Members from './pages/Members';
@@ -48,6 +49,7 @@ function App() {
     { path: '/members', label: 'Участники', icon: <Users className="mr-2 h-4 w-4" /> },
     { path: '/catalog', label: 'Каталог', icon: <ImageIcon className="mr-2 h-4 w-4" /> },
     { path: '/press', label: 'Пресса', icon: <BookOpen className="mr-2 h-4 w-4" /> },
+    { path: '/contacts', label: 'Контакты', icon: <Mail className="mr-2 h-4 w-4" /> },
   ];
 
   return (
@@ -117,6 +119,7 @@ function App() {
           <Route path="/members" element={<Members />} />
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/press" element={<Press />} />
+          <Route path="/contacts" element={<Contacts />} />
           <Route path="/admin" element={<Admin />} />
         </Routes>
       </main>
