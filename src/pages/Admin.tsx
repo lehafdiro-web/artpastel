@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Edit3, LogOut, Plus, Save, Trash2, Upload, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit3, LogOut, Plus, Save, Trash2, Upload, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CatalogItem, Member, NewsItem, PressItem, useStore } from '../store';
 import {
@@ -345,6 +345,39 @@ function AdminEntries({
     ? { singular: 'новость', action: 'новости' }
     : { singular: 'пленер', action: 'пленера' };
 
+  const swapEntryDates = (currentItem: NewsItem, targetItem: NewsItem) => {
+    updateNews(currentItem.id, {
+      title: currentItem.title,
+      content: currentItem.content,
+      image: currentItem.image,
+      date: targetItem.date,
+    });
+
+    updateNews(targetItem.id, {
+      title: targetItem.title,
+      content: targetItem.content,
+      image: targetItem.image,
+      date: currentItem.date,
+    });
+  };
+
+  const moveItem = (itemId: string, direction: 'up' | 'down') => {
+    const currentIndex = filteredItems.findIndex((item) => item.id === itemId);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const targetItem = filteredItems[targetIndex];
+    const currentItem = filteredItems[currentIndex];
+
+    if (!targetItem || !currentItem) {
+      return;
+    }
+
+    swapEntryDates(currentItem, targetItem);
+  };
+
   const resetForm = () => {
     setForm(createEntryFormState());
     setEditingId(null);
@@ -450,6 +483,22 @@ function AdminEntries({
               </div>
             </div>
             <div className="flex items-center gap-2 self-end sm:self-auto">
+              <button
+                onClick={() => moveItem(item.id, 'up')}
+                disabled={filteredItems[0]?.id === item.id}
+                className="p-2 text-stone-400 transition-colors hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-30"
+                title="Поднять выше"
+              >
+                <ArrowUp className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => moveItem(item.id, 'down')}
+                disabled={filteredItems[filteredItems.length - 1]?.id === item.id}
+                className="p-2 text-stone-400 transition-colors hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-30"
+                title="Опустить ниже"
+              >
+                <ArrowDown className="h-5 w-5" />
+              </button>
               <button onClick={() => startEditing(item)} className="p-2 text-stone-400 transition-colors hover:text-stone-700">
                 <Edit3 className="h-5 w-5" />
               </button>
