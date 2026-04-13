@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { useData } from '../store';
+import { getCatalogAuthorKey, getCatalogAuthorName, useData } from '../store';
 
 export default function Catalog() {
-  const { catalog } = useData();
+  const { catalog, members } = useData();
   const [selectedImage, setSelectedImage] = useState<typeof catalog[0] | null>(null);
   const [filterAuthor, setFilterAuthor] = useState<string>('all');
 
-  const authors = Array.from(new Set(catalog.map((item) => item.author))).sort((a, b) => a.localeCompare(b, 'ru'));
-  const filtered = filterAuthor === 'all' ? catalog : catalog.filter((item) => item.author === filterAuthor);
+  const authorOptions = Array.from(
+    new Map(
+      catalog.map((item) => {
+        const key = getCatalogAuthorKey(item, members);
+        return [key, getCatalogAuthorName(item, members)];
+      })
+    ).entries()
+  ).sort((a, b) => a[1].localeCompare(b[1], 'ru'));
+  const filtered = filterAuthor === 'all' ? catalog : catalog.filter((item) => getCatalogAuthorKey(item, members) === filterAuthor);
 
   return (
     <div className="space-y-8">
@@ -17,7 +24,7 @@ export default function Catalog() {
         <p className="text-stone-500 mt-2">Галерея картин наших участников, выполненных в технике сухой пастели.</p>
       </div>
 
-      {authors.length > 1 && (
+      {authorOptions.length > 1 && (
         <div className="flex flex-wrap gap-2 mb-2">
           <button
             onClick={() => setFilterAuthor('all')}
@@ -29,17 +36,17 @@ export default function Catalog() {
           >
             Все работы
           </button>
-          {authors.map((author) => (
+          {authorOptions.map(([authorKey, authorName]) => (
             <button
-              key={author}
-              onClick={() => setFilterAuthor(author)}
+              key={authorKey}
+              onClick={() => setFilterAuthor(authorKey)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                filterAuthor === author
+                filterAuthor === authorKey
                   ? 'bg-stone-800 text-white'
                   : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
               }`}
             >
-              {author}
+              {authorName}
             </button>
           ))}
         </div>
@@ -64,7 +71,7 @@ export default function Catalog() {
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
                 <h3 className="text-white font-bold text-lg">{item.title}</h3>
-                <p className="text-stone-300 text-sm">{item.author}</p>
+                <p className="text-stone-300 text-sm">{getCatalogAuthorName(item, members)}</p>
               </div>
             </div>
           ))}
@@ -89,12 +96,12 @@ export default function Catalog() {
               <h3 className="text-2xl font-bold text-white mb-1">{selectedImage.title}</h3>
               <button
                 onClick={() => {
-                  setFilterAuthor(selectedImage.author);
+                  setFilterAuthor(getCatalogAuthorKey(selectedImage, members));
                   setSelectedImage(null);
                 }}
                 className="text-stone-300 hover:text-amber-400 transition-colors text-lg"
               >
-                {selectedImage.author}
+                {getCatalogAuthorName(selectedImage, members)}
               </button>
               {selectedImage.description && <p className="text-stone-500 text-sm mt-1">{selectedImage.description}</p>}
             </div>

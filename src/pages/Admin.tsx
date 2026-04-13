@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Edit3, LogOut, Plus, Save, Trash2, Upload, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { CatalogItem, Member, NewsItem, PressItem, useStore } from '../store';
+import { CatalogItem, Member, NewsItem, PressItem, getCatalogAuthorName, resolveMemberIdByAuthor, useStore } from '../store';
 import {
   EntryKind,
   formatEntryDate,
@@ -648,8 +648,9 @@ function AdminCatalog({
   const [form, setForm] = useState({ title: '', author: '', description: '', image: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const sortedMembers = useMemo(() => sortByName(members), [members]);
-  const memberNames = sortedMembers.map((member) => member.name);
-  const sortedCatalog = [...catalog].sort((a, b) => a.author.localeCompare(b.author, 'ru') || a.title.localeCompare(b.title, 'ru'));
+  const sortedCatalog = [...catalog].sort(
+    (a, b) => getCatalogAuthorName(a, members).localeCompare(getCatalogAuthorName(b, members), 'ru') || a.title.localeCompare(b.title, 'ru')
+  );
 
   const resetForm = () => {
     setForm({ title: '', author: '', description: '', image: '' });
@@ -670,7 +671,7 @@ function AdminCatalog({
     <div>
       <h2 className="mb-1 text-xl font-bold text-stone-800">{editingId ? 'Редактировать картину' : 'Добавить картину в каталог'}</h2>
       <p className="mb-4 text-sm text-stone-400">
-        Имя автора должно совпадать с именем участника, тогда работа появится в его портфолио.
+        Работа привязывается к участнику по внутреннему ID, поэтому переименование больше не отрывает картины от автора.
       </p>
       <form onSubmit={submit} className="mb-8 space-y-4 rounded-xl bg-stone-50 p-4">
         <input
@@ -688,9 +689,9 @@ function AdminCatalog({
           required
         >
           <option value="">Выберите автора</option>
-          {memberNames.map((name) => (
-            <option key={name} value={name}>
-              {name}
+          {sortedMembers.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.name}
             </option>
           ))}
         </select>
@@ -725,13 +726,18 @@ function AdminCatalog({
               {item.image && <img src={item.image} alt={item.title} className="h-14 w-14 flex-shrink-0 rounded-lg object-cover" />}
               <div className="min-w-0">
                 <p className="break-words font-semibold text-stone-900">{item.title}</p>
-                <p className="text-sm text-stone-400">{item.author}</p>
+                <p className="text-sm text-stone-400">{getCatalogAuthorName(item, members)}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 onClick={() => {
-                  setForm({ title: item.title, author: item.author, description: item.description ?? '', image: item.image });
+                  setForm({
+                    title: item.title,
+                    author: resolveMemberIdByAuthor(item.author, members) ?? '',
+                    description: item.description ?? '',
+                    image: item.image,
+                  });
                   setEditingId(item.id);
                 }}
                 className="p-2 text-stone-400 transition-colors hover:text-stone-700"

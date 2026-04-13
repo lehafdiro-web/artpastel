@@ -80,6 +80,11 @@ const memberNameOverrides: Record<string, string> = {
 
 const normalizeMemberName = (name: string) => memberNameOverrides[name] ?? name;
 
+const importedMembersById = new Map(importedMembers.map((member) => [member.id, normalizeMemberName(member.name)]));
+const importedMemberIdByName = new Map(
+  importedMembers.map((member) => [normalizeMemberName(member.name), member.id])
+);
+
 const normalizeMember = (member: Member): Member => ({
   ...member,
   name: normalizeMemberName(member.name),
@@ -92,16 +97,34 @@ const normalizeCatalogItem = (item: CatalogItem): CatalogItem => ({
 
 const mergeMembers = (current: Member[], imported: Member[]): Member[] => {
   const normalizedCurrent = current.map(normalizeMember);
-  const normalizedImported = imported.map(normalizeMember);
+  const existingIds = new Set(normalizedCurrent.map((member) => member.id));
   const existingNames = new Set(normalizedCurrent.map((member) => member.name));
-  return [...normalizedCurrent, ...normalizedImported.filter((member) => !existingNames.has(member.name))];
+  const missingImported = imported
+    .map(normalizeMember)
+    .filter((member) => !existingIds.has(member.id) && !existingNames.has(member.name));
+
+  return [...normalizedCurrent, ...missingImported];
 };
 
 const mergeCatalog = (current: CatalogItem[], imported: CatalogItem[]): CatalogItem[] => {
-  const normalizedCurrent = current.map(normalizeCatalogItem);
+  const merged = new Map<string, CatalogItem>();
   const normalizedImported = imported.map(normalizeCatalogItem);
-  const existingKeys = new Set(normalizedCurrent.map((item) => `${item.author}::${item.title}`));
-  return [...normalizedCurrent, ...normalizedImported.filter((item) => !existingKeys.has(`${item.author}::${item.title}`))];
+  const importedById = new Map(normalizedImported.map((item) => [item.id, item]));
+
+  normalizedImported.forEach((item) => {
+    merged.set(item.id, item);
+  });
+
+  current.map(normalizeCatalogItem).forEach((item) => {
+    const importedItem = importedById.get(item.id);
+    merged.set(item.id, {
+      ...importedItem,
+      ...item,
+      description: item.description ?? importedItem?.description,
+    });
+  });
+
+  return Array.from(merged.values());
 };
 
 const mergePortfolioState = (state: Pick<AppState, 'members' | 'catalog'>) => ({
@@ -151,19 +174,52 @@ const updateInSupabase = async (table: string, id: string, data: Record<string, 
   return true;
 };
 
-const updateCatalogAuthorInSupabase = async (previousName: string, nextName: string) => {
-  if (!supabase || previousName === nextName) {
-    return true;
+const toCatalogSupabaseRow = (item: CatalogItem) => ({
+  id: item.id,
+  title: item.title,
+  author: item.author,
+  image: item.image,
+});
+
+export const resolveMemberIdByAuthor = (authorRef: string, members: Member[]) => {
+  const normalizedAuthor = normalizeMemberName(authorRef);
+  const byId = members.find((member) => member.id === authorRef);
+  if (byId) {
+    return byId.id;
   }
 
-  const { error } = await supabase.from('catalog').update({ author: nextName }).eq('author', previousName);
-  if (error) {
-    console.error('Supabase catalog author update error', error);
-    return false;
+  const byName = members.find((member) => member.name === normalizedAuthor);
+  if (byName) {
+    return byName.id;
   }
 
-  return true;
+  const importedId = importedMemberIdByName.get(normalizedAuthor);
+  if (!importedId) {
+    return null;
+  }
+
+  const currentImportedMember = members.find((member) => member.id === importedId);
+  return currentImportedMember?.id ?? importedId;
 };
+
+export const getCatalogAuthorName = (item: CatalogItem, members: Member[]) => {
+  const memberId = resolveMemberIdByAuthor(item.author, members);
+  if (!memberId) {
+    return normalizeMemberName(item.author);
+  }
+
+  const member = members.find((entry) => entry.id === memberId);
+  return member?.name ?? importedMembersById.get(memberId) ?? normalizeMemberName(item.author);
+};
+
+export const isCatalogItemOwnedByMember = (item: CatalogItem, member: Member, members: Member[]) =>
+  resolveMemberIdByAuthor(item.author, members) === member.id;
+
+export const getCatalogAuthorKey = (item: CatalogItem, members: Member[]) =>
+  resolveMemberIdByAuthor(item.author, members) ?? normalizeMemberName(item.author);
+
+export const countCatalogItemsForMember = (catalog: CatalogItem[], member: Member, members: Member[]) =>
+  catalog.filter((item) => isCatalogItemOwnedByMember(item, member, members)).length;
 
 export const useStore = create<AppState>()(
   persist(
@@ -213,15 +269,9 @@ export const useStore = create<AppState>()(
 
           const updatedMember = normalizeMember({ ...item, id });
           updateInSupabase('members', id, updatedMember);
-          updateCatalogAuthorInSupabase(currentMember.name, updatedMember.name);
 
           return {
             members: state.members.map((member) => (member.id === id ? updatedMember : member)),
-            catalog: state.catalog.map((catalogItem) =>
-              catalogItem.author === currentMember.name
-                ? { ...catalogItem, author: updatedMember.name }
-                : catalogItem
-            ),
           };
         }),
       deleteMember: (id) =>
@@ -235,7 +285,7 @@ export const useStore = create<AppState>()(
       addCatalogItem: (item) =>
         set((state) => {
           const newItem = normalizeCatalogItem({ ...item, id: generateId() });
-          pushToSupabase('catalog', newItem);
+          pushToSupabase('catalog', toCatalogSupabaseRow(newItem));
           return { catalog: [...state.catalog, newItem] };
         }),
       updateCatalogItem: (id, item) =>
@@ -246,7 +296,7 @@ export const useStore = create<AppState>()(
           }
 
           const updatedItem = normalizeCatalogItem({ ...currentItem, ...item, id });
-          updateInSupabase('catalog', id, updatedItem);
+          updateInSupabase('catalog', id, toCatalogSupabaseRow(updatedItem));
           return { catalog: state.catalog.map((catalogItem) => (catalogItem.id === id ? updatedItem : catalogItem)) };
         }),
       deleteCatalogItem: (id) =>

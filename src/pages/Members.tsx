@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, X, Image as ImageIcon } from 'lucide-react';
-import { useData } from '../store';
+import { countCatalogItemsForMember, getCatalogAuthorName, isCatalogItemOwnedByMember, useData } from '../store';
 
 export default function Members() {
   const { members, catalog } = useData();
@@ -8,7 +8,7 @@ export default function Members() {
   const [lightbox, setLightbox] = useState<typeof catalog[0] | null>(null);
 
   const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-  const memberWorks = selected ? catalog.filter((item) => item.author === selected.name) : [];
+  const memberWorks = selected ? catalog.filter((item) => isCatalogItemOwnedByMember(item, selected, members)) : [];
 
   return (
     <div className="space-y-8">
@@ -46,7 +46,7 @@ export default function Members() {
               <div className="p-5">
                 <h3 className="text-base font-bold text-stone-900 mb-1">{member.name}</h3>
                 <span className="inline-block mt-3 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
-                  {catalog.filter((item) => item.author === member.name).length} работ
+                  {countCatalogItemsForMember(catalog, member, members)} работ
                 </span>
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function Members() {
             <img src={lightbox.image} alt={lightbox.title} className="max-h-[80vh] object-contain rounded-lg shadow-2xl" />
             <div className="text-center mt-4">
               <h3 className="text-2xl font-bold text-white">{lightbox.title}</h3>
-              <p className="text-stone-400 mt-1">{lightbox.author}</p>
+              <p className="text-stone-400 mt-1">{getCatalogAuthorName(lightbox, members)}</p>
               {lightbox.description && <p className="text-stone-500 text-sm mt-1">{lightbox.description}</p>}
             </div>
           </div>
