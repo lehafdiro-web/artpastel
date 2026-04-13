@@ -2,6 +2,39 @@ import React, { useState } from 'react';
 import { User, X, Image as ImageIcon } from 'lucide-react';
 import { countCatalogItemsForMember, getCatalogAuthorName, isCatalogItemOwnedByMember, useData } from '../store';
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const formatMemberBio = (bio: string) => {
+  const sectionMarkers = [
+    'Телефон:',
+    'E-mail:',
+    'Email:',
+    'BIO',
+    'Образование:',
+    'Членство:',
+    'Выставки:',
+    'Курсы',
+    'Профессиональный опыт',
+    'Публикации',
+  ];
+
+  let formatted = bio.replace(/\r\n?/g, '\n').trim();
+
+  sectionMarkers.forEach((marker) => {
+    formatted = formatted.replace(new RegExp(`\\s*(${escapeRegExp(marker)})`, 'g'), '\n\n$1');
+  });
+
+  formatted = formatted
+    .replace(/;\s+(?=(?:с\s+)?\d{4})/g, ';\n')
+    .replace(/\.\s+(?=\d{4}\s*[-–])/g, '.\n')
+    .replace(/\s+(?=(?:с\s+)?\d{4}\s*[-–])/g, '\n')
+    .replace(/\s+-\s+п\s+(?=\d{4})/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return formatted.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
+};
+
 export default function Members() {
   const { members, catalog } = useData();
   const [selected, setSelected] = useState<typeof members[0] | null>(null);
@@ -82,7 +115,13 @@ export default function Members() {
               </div>
               <div className="flex-1 pt-1">
                 <h2 className="text-2xl font-bold text-stone-900 mb-2">{selected.name}</h2>
-                <p className="whitespace-pre-wrap text-stone-600 leading-relaxed">{selected.bio}</p>
+                <div className="space-y-4 text-stone-600">
+                  {formatMemberBio(selected.bio).map((paragraph, index) => (
+                    <p key={`${selected.id}-bio-${index}`} className="whitespace-pre-wrap leading-relaxed">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
 
