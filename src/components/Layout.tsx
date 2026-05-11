@@ -12,7 +12,6 @@ const Navbar = () => {
     { name: 'Главная', path: '/' },
     { name: 'Новости', path: '/news' },
     { name: 'Участники', path: '/members' },
-    { name: 'Каталог', path: '/catalog' },
     { name: 'О нас пишут', path: '/press' },
   ];
 

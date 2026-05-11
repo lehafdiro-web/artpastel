@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
-import { BookOpen, CalendarRange, Image as ImageIcon, Lock, Mail, Menu, Newspaper, Palette, Users, X } from 'lucide-react';
+import { BookOpen, CalendarRange, Lock, Mail, Menu, Newspaper, Palette, Users, X } from 'lucide-react';
 
 import Admin from './pages/Admin';
 import Catalog from './pages/Catalog';
@@ -47,7 +47,6 @@ function App() {
     { path: '/news', label: 'Новости', icon: <Newspaper className="mr-2 h-4 w-4" /> },
     { path: '/pleinairs', label: 'Пленеры', icon: <CalendarRange className="mr-2 h-4 w-4" /> },
     { path: '/members', label: 'Участники', icon: <Users className="mr-2 h-4 w-4" /> },
-    { path: '/catalog', label: 'Каталог', icon: <ImageIcon className="mr-2 h-4 w-4" /> },
     { path: '/press', label: 'Пресса', icon: <BookOpen className="mr-2 h-4 w-4" /> },
     { path: '/contacts', label: 'Контакты', icon: <Mail className="mr-2 h-4 w-4" /> },
   ];
